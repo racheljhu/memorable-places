@@ -1,0 +1,2 @@
+rootProject.name = "Mem Places"
+include ':app'
