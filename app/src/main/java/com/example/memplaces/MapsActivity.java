@@ -8,6 +8,7 @@ import androidx.fragment.app.FragmentActivity;
 import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
@@ -30,7 +31,9 @@ import com.example.memplaces.databinding.ActivityMapsBinding;
 import com.google.android.material.dialog.InsetDialogOnTouchListener;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -41,9 +44,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
     LocationManager locationManager;
     LocationListener locationListener;
-    Intent intent;
-    int value;
-    //Geocoder geocoder;
+
+    public void centerMapOnLocation(Location location, String markerTitle) {
+        if (location != null) {
+            LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+            mMap.clear();
+            mMap.addMarker(new MarkerOptions().position(latLng).title(markerTitle));
+            mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 14));
+        }
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull @org.jetbrains.annotations.NonNull String[] permissions, @NonNull @org.jetbrains.annotations.NotNull int[] grantResults) {
@@ -51,8 +60,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
 
         if (requestCode == 1) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) { //checking if user granted permission
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) { //checking if user granted permission
                     locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+                    Location lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+                    centerMapOnLocation(lastKnownLocation, "Your Location");
                 }
             }
         }
@@ -70,104 +81,9 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
 
-        intent = getIntent();
-        if(intent.hasExtra("savedLoc")) {
-            int value = intent.getIntExtra("savedLoc", 0);
-            Log.i("value", String.valueOf(value));
-        }
-
-
-
     }
 
-    public void updateList(String addy){
-        //Intent intent = getIntent();
-        //int value = intent.getIntExtra("savedLoc", 0);
 
-
-            value = intent.getIntExtra("savedLoc", 0);
-            //Log.i("value", String.valueOf(value));
-
-
-        Log.i("value", String.valueOf(value));
-        Log.i("latLoc", String.valueOf(MainActivity.latitudes.get(0)));
-
-        //LatLng sydney = new LatLng(MainActivity.latitudes.get(value-2), MainActivity.longitudes.get(value-2));
-        //LatLng sydney = new LatLng(MainActivity.latitudes.get(value-2), MainActivity.longitudes.get(value-2));
-        //mMap.addMarker(new MarkerOptions().position(sydney).title(addy));
-        //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
-
-
-        /*Intent searchAddress = new  Intent(Intent.ACTION_VIEW, Uri.parse("geo:0,0?q="+addy));
-        startActivity(searchAddress);
-/*
-        //Intent intent = getIntent();
-        Log.i("intent works", addy);
-
-        /*String setAddy = intent.getStringExtra("savedLoc");
-        Log.i("addy saved", "yes");
-
-        Log.i("add", setAddy);*/
-
-        //Geocoder coder = new Geocoder(this);
-        //List<Address> address;
-        /*
-        try {
-
-
-            Geocoder geocoder1 = new Geocoder(getApplicationContext(), Locale.getDefault());
-
-            if (addy != null && !addy.isEmpty()) {
-
-                List<Address> addressList = geocoder1.getFromLocationName(addy, 1);
-                if (addressList != null && addressList.size() > 0) {
-                    double lat = addressList.get(0).getLatitude();
-                    double lng = addressList.get(0).getLongitude();
-                    Log.i("addy go through", "success");
-                }
-            }
-        } catch(Exception e){
-                e.printStackTrace();
-                // end catch
-            } // end if
-
-        }*/
-/*
-        try {
-            Log.i("addy", "running");
-            address = geocoder.getFromLocationName(addy,1);
-
-            if (address==null) {
-                Log.i("address", null);
-            }
-
-            Address location=address.get(0);
-            double latitude = location.getLatitude();
-            double longitude = location.getLongitude();
-
-            Log.i("lat", String.valueOf(latitude));
-            Log.i("long", String.valueOf(longitude));
-
-            LatLng sydney = new LatLng(location.getLatitude(), location.getLongitude());
-            mMap.addMarker(new MarkerOptions().position(sydney).title(addy));
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
-
-
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }*/
-    }
-
-    /**
-     * Manipulates the map once available.
-     * This callback is triggered when the map is ready to be used.
-     * This is where we can add markers or lines, add listeners or move the camera. In this case,
-     * we just add a marker near Sydney, Australia.
-     * If Google Play services is not installed on the device, the user will be prompted to install
-     * it inside the SupportMapFragment. This method will only be triggered once the user has
-     * installed Google Play services and returned to the app.
-     */
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
@@ -175,131 +91,109 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setOnMapLongClickListener(this);
 
         Intent intent = getIntent();
-        int value = intent.getIntExtra("savedLoc", -1);
+        int value = intent.getIntExtra("savedLoc", 0);
 
-        if (value == -1){
-            Toast.makeText(this, "Location not found", Toast.LENGTH_SHORT).show();
-        } else {
-            LatLng itemLoc = new LatLng(MainActivity.latitudes.get(value-2), MainActivity.longitudes.get(value-2));
-            mMap.addMarker(new MarkerOptions().position(itemLoc).title("address"));
-            mMap.moveCamera(CameraUpdateFactory.newLatLng(itemLoc));
-        }
+        if (value == 0) { //add a new place was selected
 
-        locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
-        locationListener = new LocationListener() {
-            @Override
-            public void onLocationChanged(@NonNull Location location) {
+            locationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+            locationListener = new LocationListener() {
+                @Override
+                public void onLocationChanged(Location location) {
 
-                //mMap.clear();
-                LatLng sydney = new LatLng(location.getLatitude(), location.getLongitude());
-                mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-                //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+                    centerMapOnLocation(location, "Your Location"); //displays users current location
 
-                Geocoder geocoder = new Geocoder(getApplicationContext(), Locale.getDefault());
-
-                try {
-
-                    List<Address> listAddresses = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
-
-                    if (listAddresses != null && listAddresses.size() > 0){
-                        String address = "";
-
-                        if (listAddresses.get(0).getThoroughfare() != null){
-                            address += listAddresses.get(0).getThoroughfare() + " ";
-                        }
-                        if (listAddresses.get(0).getLocality() != null){
-                            address += listAddresses.get(0).getLocality() + " ";
-                        }
-                        if (listAddresses.get(0).getAdminArea() != null){
-                            address += listAddresses.get(0).getAdminArea();
-                        }
-                        if (listAddresses.get(0).getPostalCode() != null){
-                            address += listAddresses.get(0).getPostalCode() + " ";
-                        }
-                        //Toast.makeText(MapsActivity.this, address, Toast.LENGTH_SHORT).show();
-
-
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
                 }
+            };
 
-            }
-        };
-
-        if (Build.VERSION.SDK_INT < 23) {
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-        } else {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) { //checking if user granted permission
-                //asking user for permission
-                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
-            } else {
+            if (Build.VERSION.SDK_INT < 23) {
                 locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
-                Location lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
+            } else {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) { //checking if user granted permission
+                    //asking user for permission
+                    ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 1);
+                } else {
+                    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, locationListener);
+                    Location lastKnownLocation = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER);
 
-                //Log.i("lat", String.valueOf(lastKnownLocation.getLatitude()));
-                //Log.i("long", String.valueOf(lastKnownLocation.getLongitude()));
+                    centerMapOnLocation(lastKnownLocation, "Your Location");
 
-                mMap.clear();
-                LatLng sydney = new LatLng(lastKnownLocation.getLatitude(), lastKnownLocation.getLongitude());
-                mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-                //mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+                }
             }
+        } else { //an address is selected from saved locations
+            Location place = new Location(LocationManager.GPS_PROVIDER);
+            place.setLatitude(MainActivity.latLngs.get(intent.getIntExtra("savedLoc", 0)).latitude);
+            place.setLongitude(MainActivity.latLngs.get(intent.getIntExtra("savedLoc", 0)).longitude);
+
+            centerMapOnLocation(place, MainActivity.locations.get(intent.getIntExtra("savedLoc", 0)));
         }
     }
 
     @Override
-    public void onMapLongClick(@NonNull @org.jetbrains.annotations.NotNull LatLng latLng) {
+    public void onMapLongClick(LatLng latLng) {
+        String address = "";
 
         try {
-            double locLatitude = latLng.latitude;
-            double locLongitude = latLng.longitude;
-            MainActivity.latitudes.add(locLatitude);
-            MainActivity.longitudes.add((double) latLng.longitude);
 
-            Geocoder coder = new Geocoder(this);
-            List<Address> listAddresses = coder.getFromLocation(locLatitude, locLongitude, 1);
+            Geocoder coder = new Geocoder(getApplicationContext(), Locale.getDefault());
+            List<Address> listAddresses = coder.getFromLocation(latLng.latitude, latLng.longitude, 1);
 
-            if (listAddresses != null && listAddresses.size() > 0){
-                String address = "";
+            if (listAddresses != null && listAddresses.size() > 0) {
 
-                if (listAddresses.get(0).getThoroughfare() != null){
+
+                if (listAddresses.get(0).getThoroughfare() != null) {
                     address += listAddresses.get(0).getThoroughfare() + " ";
                 }
-                if (listAddresses.get(0).getLocality() != null){
+                if (listAddresses.get(0).getLocality() != null) {
                     address += listAddresses.get(0).getLocality() + " ";
                 }
-                if (listAddresses.get(0).getAdminArea() != null){
+                if (listAddresses.get(0).getAdminArea() != null) {
                     address += listAddresses.get(0).getAdminArea() + " ";
                 }
-                if (listAddresses.get(0).getPostalCode() != null){
+                if (listAddresses.get(0).getPostalCode() != null) {
                     address += listAddresses.get(0).getPostalCode();
                 }
-
-
-                mMap.addMarker(new MarkerOptions().position(latLng).title(address));
-                mMap.moveCamera(CameraUpdateFactory.newLatLng(latLng));
-
-                Toast.makeText(MapsActivity.this, "Location saved!", Toast.LENGTH_SHORT).show();
-
-                //ArrayList<String> locations = new ArrayList<String>();
-
-                //locations.add(address);
-                //Log.i("list", locations.get(0));
-
-                MainActivity.locations.add(address);
-
-
-                //Intent intent = getIntent();
-                //intent.putExtra("address", address);
-
-                Log.i("address", address);
-
-                MainActivity.arrayAdapter.notifyDataSetChanged();
 
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        if (address.equals("")) { //in case an address is not found
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("HH:mm yyyy-MM-dd");
+            address += simpleDateFormat.format(new Date());
+        }
+
+        mMap.addMarker(new MarkerOptions().position(latLng).title(address));
+
+        //adds coordinates and address to appropriate ArrayLists
+        MainActivity.locations.add(address);
+        MainActivity.latLngs.add(latLng);
+
+        MainActivity.arrayAdapter.notifyDataSetChanged();
+
+        //saving data
+        SharedPreferences sharedPreferences = this.getSharedPreferences("com.example.memplaces", Context.MODE_PRIVATE);
+
+        try {
+            ArrayList<String> latitudes = new ArrayList<>();
+            ArrayList<String> longitudes = new ArrayList<>();
+
+            for (LatLng coordinate : MainActivity.latLngs){
+                latitudes.add(String.valueOf(coordinate.latitude));
+                longitudes.add(String.valueOf(coordinate.longitude));
+            }
+
+            sharedPreferences.edit().putString("locations", ObjectSerializer.serialize(MainActivity.locations)).apply();
+            sharedPreferences.edit().putString("latitudes", ObjectSerializer.serialize(latitudes)).apply();
+            sharedPreferences.edit().putString("longitudes", ObjectSerializer.serialize(longitudes)).apply();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        Toast.makeText(this, "Location Saved!", Toast.LENGTH_SHORT).show();
     }
-    }
+
+
+}
+
